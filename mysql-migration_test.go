@@ -359,6 +359,92 @@ func TestMigrationEscapedCharacters(t *testing.T) {
 		}
 	}
 }
+
+type DocumentWithAmount struct {
+	CompanyID     int
+	DocumentID    int
+	DecimalAmount string
+	FloatAmount   float64
+}
+
+func TestMigrationPointTypes(t *testing.T) {
+	mssqlDsn, mysqlDsn, err := prepareDatabases()
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+
+	mssqlDb, mysqlDb, _ := tryGetConnections(mssqlDsn, mysqlDsn)
+	defer mssqlDb.Close()
+	defer mysqlDb.Close()
+
+	_, err = mssqlDb.Exec(`CREATE TABLE DocumentsWithAmount
+								(
+									CompanyID   	INT  NOT NULL,
+									DocumentID		INT  NOT NULL,
+									DecimalAmount 	DECIMAL(6,3) NULL,
+									FloatAmount 	FLOAT NULL,
+									PRIMARY KEY (CompanyID, DocumentID)
+								);`)
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+
+	_, err = mysqlDb.Exec(`CREATE TABLE DocumentsWithAmount
+								(
+									CompanyID   	INT  NOT NULL,
+									DocumentID		INT  NOT NULL,
+									DecimalAmount 	DECIMAL(6,3) NULL,
+									FloatAmount 	FLOAT NULL,
+									PRIMARY KEY (CompanyID, DocumentID)
+								);`)
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+
+	documents := []DocumentWithAmount{{1, 0, "100.356", 100.356},
+		{1, 1, "-100.356", -100.356}}
+	for _, doc := range documents {
+		_, err = mssqlDb.Exec(`INSERT INTO DocumentsWithAmount (CompanyID, DocumentID, DecimalAmount, FloatAmount) 
+												VALUES (?, ?, ?, ?);`,
+			doc.CompanyID, doc.DocumentID, doc.DecimalAmount, doc.FloatAmount)
+
+		if err != nil {
+			t.Error(err.Error())
+			return
+		}
+	}
+
+	migrateDatabase(mssqlDsn, mysqlDsn)
+
+	rows, err := mysqlDb.Query(`SELECT CompanyID, DocumentID, DecimalAmount, FloatAmount FROM DocumentsWithAmount`)
+
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+
+	var migratedDocuments []DocumentWithAmount
+	for rows.Next() {
+		var doc DocumentWithAmount
+		rows.Scan(&doc.CompanyID, &doc.DocumentID, &doc.DecimalAmount, &doc.FloatAmount)
+		migratedDocuments = append(migratedDocuments, doc)
+	}
+
+	if len(documents) != len(migratedDocuments) {
+		t.Error("Not all documents migrated")
+		return
+	}
+
+	for i, doc := range documents {
+		migratedDoc := migratedDocuments[i]
+		if doc != migratedDoc {
+			t.Error("Document migrated incorrect")
+		}
+	}
+}
 func getMsSqlDsnParams(mssqlDsn string) msdsn.Config {
 	if len(mssqlDsn) > 0 {
 		params, _, err := msdsn.Parse(mssqlDsn)

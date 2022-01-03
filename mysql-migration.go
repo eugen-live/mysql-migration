@@ -88,7 +88,7 @@ func migrateData(mssqlDb *sql.DB, mysqlDb *sql.DB, mssqlTables []TableDefinition
 					switch t := v.(type) {
 					case int, int64:
 						columnsValue[i] = fmt.Sprint(t)
-					case float64:
+					case float32, float64:
 						columnsValue[i] = fmt.Sprint(t)
 					case time.Time:
 						columnsValue[i] = fmt.Sprintf("'%s'", t.Format("2006-01-02 15:04:05.000000"))
@@ -97,6 +97,12 @@ func migrateData(mssqlDb *sql.DB, mysqlDb *sql.DB, mssqlTables []TableDefinition
 						escapedString = strings.Replace(escapedString, "\\", "\\\\", -1)
 						escapedString = strings.Replace(escapedString, "'", "\\'", -1)
 						columnsValue[i] = fmt.Sprintf("'%s'", escapedString)
+					case []uint8:
+						byteArray := v.([]uint8)
+						switch mssqlTable.columns[i].Type {
+						case "decimal":
+							columnsValue[i] = string(t)
+						}
 					default:
 						columnsValue[i] = "NULL"
 					}
