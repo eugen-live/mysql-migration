@@ -11,6 +11,7 @@ It's a Go console utility for migration from MSSQL to MySQL engine. The database
 | DECIMAL          | DECIMAL    |
 | FLOAT            | FLOAT      |
 | UNIQUEIDENTIFIER | CHAR(36)   |
+| VARBINARY        | VARBINARY  |
 
 ## Run examples:
 ```bash

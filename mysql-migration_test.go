@@ -527,6 +527,93 @@ func TestMigrationGuid(t *testing.T) {
 		}
 	}
 }
+
+type DocumentWithVarbinary struct {
+	CompanyID  int
+	DocumentID int
+	Mask       string
+}
+
+func TestMigrationVarbinary(t *testing.T) {
+	mssqlDsn, mysqlDsn, err := prepareDatabases()
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+
+	mssqlDb, mysqlDb, _ := tryGetConnections(mssqlDsn, mysqlDsn)
+	defer mssqlDb.Close()
+	defer mysqlDb.Close()
+
+	_, err = mssqlDb.Exec(`CREATE TABLE DocumentsWithVarbinary
+								(
+									CompanyID   	INT  NOT NULL,
+									DocumentID		INT  NOT NULL,
+									Mask 			VARBINARY(2) NOT NULL,
+									PRIMARY KEY (CompanyID, DocumentID)
+								);`)
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+
+	_, err = mysqlDb.Exec(`CREATE TABLE DocumentsWithVarbinary
+								(
+									CompanyID   	INT  NOT NULL,
+									DocumentID		INT  NOT NULL,
+									Mask 			VARBINARY(2) NOT NULL,
+									PRIMARY KEY (CompanyID, DocumentID)
+								);`)
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+
+	documents := []DocumentWithVarbinary{{1, 0, "0x00"},
+		{1, 1, "0x1a"},
+		{1, 2, "0x03"}}
+	for _, doc := range documents {
+		_, err = mssqlDb.Exec(`INSERT INTO DocumentsWithVarbinary (CompanyID, DocumentID, Mask) 
+												VALUES (?, ?, CONVERT(VARBINARY, ?, 1));`,
+			doc.CompanyID, doc.DocumentID, doc.Mask)
+
+		if err != nil {
+			t.Error(err.Error())
+			return
+		}
+	}
+
+	migrateDatabase(mssqlDsn, mysqlDsn)
+
+	rows, err := mysqlDb.Query(`SELECT CompanyID, DocumentID, Mask FROM DocumentsWithVarbinary`)
+
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+
+	var migratedDocuments []DocumentWithVarbinary
+	for rows.Next() {
+		var doc DocumentWithVarbinary
+		var byteArray []uint8
+		rows.Scan(&doc.CompanyID, &doc.DocumentID, &byteArray)
+		doc.Mask = fmt.Sprintf("0x%x", byteArray)
+		migratedDocuments = append(migratedDocuments, doc)
+	}
+
+	if len(documents) != len(migratedDocuments) {
+		t.Error("Not all documents migrated")
+		return
+	}
+
+	for i, doc := range documents {
+		migratedDoc := migratedDocuments[i]
+		if doc != migratedDoc {
+			t.Error("Document migrated incorrect")
+		}
+	}
+}
+
 func getMsSqlDsnParams(mssqlDsn string) msdsn.Config {
 	if len(mssqlDsn) > 0 {
 		params, _, err := msdsn.Parse(mssqlDsn)

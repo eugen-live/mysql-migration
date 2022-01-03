@@ -109,6 +109,12 @@ func migrateData(mssqlDb *sql.DB, mysqlDb *sql.DB, mssqlTables []TableDefinition
 								byteArray[7], byteArray[6],
 								byteArray[8], byteArray[9],
 								byteArray[10], byteArray[11], byteArray[12], byteArray[13], byteArray[14], byteArray[15])
+						case "varbinary":
+							if len(byteArray) > 0 {
+								columnsValue[i] = fmt.Sprintf("0x%x", byteArray)
+							} else {
+								columnsValue[i] = "0x0"
+							}
 						case "decimal":
 							columnsValue[i] = string(t)
 						}
