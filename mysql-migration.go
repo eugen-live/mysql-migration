@@ -57,9 +57,16 @@ func migrateDatabase(sourceUrl string, destinationUrl string) error {
 }
 
 func migrateData(mssqlDb *sql.DB, mysqlDb *sql.DB, mssqlTables []TableDefinition, mysqlTables []TableDefinition) error {
+	_, err := mysqlDb.Exec(`SET SESSION FOREIGN_KEY_CHECKS=0;`)
+
+	if err != nil {
+		return err
+	}
+
 	for tableIndex, mssqlTable := range mssqlTables {
 		mysqlTable := mysqlTables[tableIndex]
-		res, err := mssqlDb.Query(fmt.Sprintf(`SELECT * FROM %s`, mssqlTable.Name))
+
+		res, err := mssqlDb.Query(fmt.Sprintf(`SELECT * FROM %s;`, mssqlTable.Name))
 
 		if err != nil {
 			return err
