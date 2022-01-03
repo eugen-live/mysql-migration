@@ -93,7 +93,10 @@ func migrateData(mssqlDb *sql.DB, mysqlDb *sql.DB, mssqlTables []TableDefinition
 					case time.Time:
 						columnsValue[i] = fmt.Sprintf("'%s'", t.Format("2006-01-02 15:04:05.000000"))
 					case string:
-						columnsValue[i] = fmt.Sprintf("'%s'", strings.TrimRight(t, " "))
+						escapedString := strings.TrimRight(t, " ")
+						escapedString = strings.Replace(escapedString, "\\", "\\\\", -1)
+						escapedString = strings.Replace(escapedString, "'", "\\'", -1)
+						columnsValue[i] = fmt.Sprintf("'%s'", escapedString)
 					default:
 						columnsValue[i] = "NULL"
 					}
@@ -102,11 +105,11 @@ func migrateData(mssqlDb *sql.DB, mysqlDb *sql.DB, mssqlTables []TableDefinition
 
 			columnsName := make([]string, len(mysqlTable.columns))
 			for i, column := range mysqlTable.columns {
-				columnsName[i] = column.Name
+				columnsName[i] = "`" + column.Name + "`"
 			}
 
 			sqlInsertText := fmt.Sprintf(`INSERT INTO %s (%s) VALUES(%s);`,
-				mysqlTable.Name,
+				"`"+mysqlTable.Name+"`",
 				strings.Join(columnsName, ", "),
 				strings.Join(columnsValue, ", "))
 

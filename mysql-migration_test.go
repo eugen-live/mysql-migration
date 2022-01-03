@@ -306,6 +306,59 @@ func TestMigrateDatabase(t *testing.T) {
 	}
 }
 
+func TestMigrationEscapedCharacters(t *testing.T) {
+	mssqlDsn, mysqlDsn, err := prepareDatabases()
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+	TestGetAndValidateSchemasSuccess(t)
+	mssqlDb, mysqlDb, _ := tryGetConnections(mssqlDsn, mysqlDsn)
+	defer mssqlDb.Close()
+	defer mysqlDb.Close()
+
+	documents := []Document{{1, 0, "1970-02-04", `Description with 'quotes' 1`},
+		{1, 1, "1993-01-27", `Description \ 2`},
+		{1, 2, "2016-06-04", `Description '/', '\', '.' 3`}}
+	for _, doc := range documents {
+		_, err = mssqlDb.Exec(`INSERT INTO Documents (CompanyID, DocumentID, DocDate, Description) 
+												VALUES (?, ?, ?, ?);`,
+			doc.CompanyID, doc.DocumentID, doc.DocDate, doc.Description)
+
+		if err != nil {
+			t.Error(err.Error())
+			return
+		}
+	}
+
+	migrateDatabase(mssqlDsn, mysqlDsn)
+
+	rows, err := mysqlDb.Query(`SELECT CompanyID, DocumentID, DocDate, Description FROM Documents`)
+
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+
+	var migratedDocuments []Document
+	for rows.Next() {
+		var doc Document
+		rows.Scan(&doc.CompanyID, &doc.DocumentID, &doc.DocDate, &doc.Description)
+		migratedDocuments = append(migratedDocuments, doc)
+	}
+
+	if len(documents) != len(migratedDocuments) {
+		t.Error("Not all documents migrated")
+		return
+	}
+
+	for i, doc := range documents {
+		migratedDoc := migratedDocuments[i]
+		if doc != migratedDoc {
+			t.Error("Document migrated incorrect")
+		}
+	}
+}
 func getMsSqlDsnParams(mssqlDsn string) msdsn.Config {
 	if len(mssqlDsn) > 0 {
 		params, _, err := msdsn.Parse(mssqlDsn)
