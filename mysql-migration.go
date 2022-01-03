@@ -68,6 +68,7 @@ func migrateData(mssqlDb *sql.DB, mysqlDb *sql.DB, mssqlTables []TableDefinition
 		fields, _ := res.Columns()
 		scans := make([]interface{}, len(fields))
 
+		rowsCount := 0
 		for res.Next() {
 			for i := range scans {
 				scans[i] = &scans[i]
@@ -107,7 +108,10 @@ func migrateData(mssqlDb *sql.DB, mysqlDb *sql.DB, mssqlTables []TableDefinition
 			if err != nil {
 				return err
 			}
+
+			rowsCount++
 		}
+		fmt.Printf("Table %s migrated (%d/%d); Rows: %d;\n", mssqlTable.Name, tableIndex+1, len(mysqlTables), rowsCount)
 	}
 	return nil
 }
