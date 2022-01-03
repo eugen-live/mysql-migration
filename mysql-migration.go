@@ -141,14 +141,28 @@ func tryGetConnections(sourceUrl string, destinationUrl string) (*sql.DB, *sql.D
 }
 
 func getAndValidateSchemas(mssqlDb *sql.DB, mysqlDb *sql.DB) ([]TableDefinition, []TableDefinition, error) {
-	mssqlTables, err := getTablesName(mssqlDb, "SELECT TABLE_NAME, TABLE_TYPE \nFROM INFORMATION_SCHEMA.TABLES\nWHERE TABLE_TYPE = 'BASE TABLE';",
-		"SELECT COLUMN_NAME, DATA_TYPE\nFROM information_schema.columns\nWHERE table_name = '%s'\nORDER BY ORDINAL_POSITION;")
+	mssqlTables, err := getTablesName(mssqlDb,
+		`SELECT TABLE_NAME, TABLE_TYPE
+						FROM INFORMATION_SCHEMA.TABLES
+						WHERE TABLE_TYPE = 'BASE TABLE';`,
+
+		`SELECT COLUMN_NAME, DATA_TYPE
+						FROM information_schema.columns
+						WHERE TABLE_CATALOG = DB_NAME() AND
+								table_name = '%s'
+						ORDER BY ORDINAL_POSITION;`)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	mysqlTables, err := getTablesName(mysqlDb, "SHOW FULL TABLES WHERE table_type = 'BASE TABLE';",
-		"SELECT COLUMN_NAME, DATA_TYPE\nFROM information_schema.columns\nWHERE table_name = '%s'\nORDER BY ORDINAL_POSITION;")
+	mysqlTables, err := getTablesName(mysqlDb,
+		"SHOW FULL TABLES WHERE table_type = 'BASE TABLE';",
+
+		`SELECT COLUMN_NAME, DATA_TYPE
+						FROM information_schema.columns
+						WHERE TABLE_SCHEMA = DATABASE() AND
+								table_name = '%s'
+						ORDER BY ORDINAL_POSITION;`)
 	if err != nil {
 		return nil, nil, err
 	}
