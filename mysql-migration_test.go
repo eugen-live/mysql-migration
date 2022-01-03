@@ -11,6 +11,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"log"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -73,12 +74,12 @@ func TestGetAndValidateSchemasSuccess(t *testing.T) {
 		return
 	}
 
-	if mssqlTables[0].Name != "Documents" {
+	if strings.ToLower(mssqlTables[0].Name) != "documents" {
 		t.Error("Validation got an incorrect name of table from MsSQL")
 		return
 	}
 
-	if mysqlTables[0].Name != "Documents" {
+	if strings.ToLower(mysqlTables[0].Name) != "documents" {
 		t.Error("Validation got an incorrect name of table from MySQL")
 		return
 	}

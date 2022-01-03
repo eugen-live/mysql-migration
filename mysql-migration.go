@@ -180,7 +180,7 @@ func getTablesName(dB *sql.DB, sqlGetTablesList string, sqlGetColumnsList string
 		tables = append(tables, table)
 	}
 
-	sort.Slice(tables, func(i, j int) bool { return tables[i].Name < tables[j].Name })
+	sort.Slice(tables, func(i, j int) bool { return strings.ToLower(tables[i].Name) < strings.ToLower(tables[j].Name) })
 
 	return tables, nil
 }
