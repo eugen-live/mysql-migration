@@ -100,6 +100,15 @@ func migrateData(mssqlDb *sql.DB, mysqlDb *sql.DB, mssqlTables []TableDefinition
 					case []uint8:
 						byteArray := v.([]uint8)
 						switch mssqlTable.columns[i].Type {
+						case "uniqueidentifier":
+							//mssql returns the GUID with the first half flipped
+							//https://stackoverflow.com/questions/38160945/ms-sql-uniqueidentifier-with-golang-sql-driver-and-uuid
+							columnsValue[i] = fmt.Sprintf("'%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x'",
+								byteArray[3], byteArray[2], byteArray[1], byteArray[0],
+								byteArray[5], byteArray[4],
+								byteArray[7], byteArray[6],
+								byteArray[8], byteArray[9],
+								byteArray[10], byteArray[11], byteArray[12], byteArray[13], byteArray[14], byteArray[15])
 						case "decimal":
 							columnsValue[i] = string(t)
 						}

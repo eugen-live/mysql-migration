@@ -3,13 +3,14 @@
 It's a Go console utility for migration from MSSQL to MySQL engine. The databases should have prepopulated schemas. The tool only copies data. The first parameter is a connection string for a source MSSQL database, and the second is MySQL destination.
 
 ## Supported types:
-| MSSQL Type | MySQL Type |
-|------------|------------|
-| INT        | INT        |
-| DATE       | DATE       |
-| NCHAR      | NCHAR      |
-| DECIMAL    | DECIMAL    |
-| FLOAT      | FLOAT      |
+| MSSQL Type       | MySQL Type |
+|------------------|------------|
+| INT              | INT        |
+| DATE             | DATE       |
+| NCHAR            | NCHAR      |
+| DECIMAL          | DECIMAL    |
+| FLOAT            | FLOAT      |
+| UNIQUEIDENTIFIER | CHAR(36)   |
 
 ## Run examples:
 ```bash

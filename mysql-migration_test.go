@@ -445,6 +445,88 @@ func TestMigrationPointTypes(t *testing.T) {
 		}
 	}
 }
+
+type DocumentWithGuid struct {
+	CompanyID  int
+	DocumentID int
+	Guid       string
+}
+
+func TestMigrationGuid(t *testing.T) {
+	mssqlDsn, mysqlDsn, err := prepareDatabases()
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+
+	mssqlDb, mysqlDb, _ := tryGetConnections(mssqlDsn, mysqlDsn)
+	defer mssqlDb.Close()
+	defer mysqlDb.Close()
+
+	_, err = mssqlDb.Exec(`CREATE TABLE DocumentsWithGuid
+								(
+									CompanyID   	INT  NOT NULL,
+									DocumentID		INT  NOT NULL,
+									Guid 			UNIQUEIDENTIFIER NOT NULL,
+									PRIMARY KEY (CompanyID, DocumentID)
+								);`)
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+
+	_, err = mysqlDb.Exec(`CREATE TABLE DocumentsWithGuid
+								(
+									CompanyID   	INT  NOT NULL,
+									DocumentID		INT  NOT NULL,
+									Guid 			CHAR(36) NOT NULL,
+									PRIMARY KEY (CompanyID, DocumentID)
+								);`)
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+
+	documents := []DocumentWithGuid{{1, 0, "3635ea7d-0975-48ff-b4ac-a870f7e1e8b5"}}
+	for _, doc := range documents {
+		_, err = mssqlDb.Exec(`INSERT INTO DocumentsWithGuid (CompanyID, DocumentID, Guid) 
+												VALUES (?, ?, ?);`,
+			doc.CompanyID, doc.DocumentID, doc.Guid)
+
+		if err != nil {
+			t.Error(err.Error())
+			return
+		}
+	}
+
+	migrateDatabase(mssqlDsn, mysqlDsn)
+
+	rows, err := mysqlDb.Query(`SELECT CompanyID, DocumentID, Guid FROM DocumentsWithGuid`)
+
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+
+	var migratedDocuments []DocumentWithGuid
+	for rows.Next() {
+		var doc DocumentWithGuid
+		rows.Scan(&doc.CompanyID, &doc.DocumentID, &doc.Guid)
+		migratedDocuments = append(migratedDocuments, doc)
+	}
+
+	if len(documents) != len(migratedDocuments) {
+		t.Error("Not all documents migrated")
+		return
+	}
+
+	for i, doc := range documents {
+		migratedDoc := migratedDocuments[i]
+		if doc != migratedDoc {
+			t.Error("Document migrated incorrect")
+		}
+	}
+}
 func getMsSqlDsnParams(mssqlDsn string) msdsn.Config {
 	if len(mssqlDsn) > 0 {
 		params, _, err := msdsn.Parse(mssqlDsn)
