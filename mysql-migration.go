@@ -119,10 +119,14 @@ func migrateData(mssqlDb *sql.DB, mysqlDb *sql.DB, mssqlTables []TableDefinition
 							}
 						case "decimal":
 							columnsValue[i] = string(t)
+						case "timestamp":
+							columnsValue[i] = "NULL"
 						}
 					default:
 						columnsValue[i] = "NULL"
 					}
+				} else {
+					columnsValue[i] = "NULL"
 				}
 			}
 

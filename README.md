@@ -13,6 +13,7 @@ It's a Go console utility for migration from MSSQL to MySQL engine. The database
 | UNIQUEIDENTIFIER | CHAR(36)            |
 | VARBINARY        | VARBINARY           |
 | BIT              | TINYINT(1); BOOLEAN |
+| TIMESTAMP        | NULL                |
 
 ## Run examples:
 ```bash
