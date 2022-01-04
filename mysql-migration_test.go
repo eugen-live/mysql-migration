@@ -614,6 +614,92 @@ func TestMigrationVarbinary(t *testing.T) {
 	}
 }
 
+type DocumentWithBoolean struct {
+	CompanyID  int
+	DocumentID int
+	Released   bool
+	Released2  bool
+}
+
+func TestMigrationBoolean(t *testing.T) {
+	mssqlDsn, mysqlDsn, err := prepareDatabases()
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+
+	mssqlDb, mysqlDb, _ := tryGetConnections(mssqlDsn, mysqlDsn)
+	defer mssqlDb.Close()
+	defer mysqlDb.Close()
+
+	_, err = mssqlDb.Exec(`CREATE TABLE DocumentsWithBoolean
+								(
+									CompanyID   	INT  NOT NULL,
+									DocumentID		INT  NOT NULL,
+									Released 		BIT  NOT NULL,
+									Released2 		BIT  NOT NULL,
+									PRIMARY KEY (CompanyID, DocumentID)
+								);`)
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+
+	_, err = mysqlDb.Exec(`CREATE TABLE DocumentsWithBoolean
+								(
+									CompanyID   INT  		NOT NULL,
+									DocumentID	INT  		NOT NULL,
+									Released 	TINYINT(1) 	NOT NULL,
+									Released2 	BOOLEAN 	NOT NULL,
+									PRIMARY KEY (CompanyID, DocumentID)
+								);`)
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+
+	documents := []DocumentWithBoolean{{1, 0, true, true},
+		{1, 1, false, false}}
+	for _, doc := range documents {
+		_, err = mssqlDb.Exec(`INSERT INTO DocumentsWithBoolean (CompanyID, DocumentID, Released, Released2) 
+												VALUES (?, ?, ?, ?);`,
+			doc.CompanyID, doc.DocumentID, doc.Released, doc.Released2)
+
+		if err != nil {
+			t.Error(err.Error())
+			return
+		}
+	}
+
+	migrateDatabase(mssqlDsn, mysqlDsn)
+
+	rows, err := mysqlDb.Query(`SELECT CompanyID, DocumentID, Released, Released2 FROM DocumentsWithBoolean`)
+
+	if err != nil {
+		t.Error(err.Error())
+		return
+	}
+
+	var migratedDocuments []DocumentWithBoolean
+	for rows.Next() {
+		var doc DocumentWithBoolean
+		rows.Scan(&doc.CompanyID, &doc.DocumentID, &doc.Released, &doc.Released2)
+		migratedDocuments = append(migratedDocuments, doc)
+	}
+
+	if len(documents) != len(migratedDocuments) {
+		t.Error("Not all documents migrated")
+		return
+	}
+
+	for i, doc := range documents {
+		migratedDoc := migratedDocuments[i]
+		if doc != migratedDoc {
+			t.Error("Document migrated incorrect")
+		}
+	}
+}
+
 func getMsSqlDsnParams(mssqlDsn string) msdsn.Config {
 	if len(mssqlDsn) > 0 {
 		params, _, err := msdsn.Parse(mssqlDsn)

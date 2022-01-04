@@ -97,6 +97,8 @@ func migrateData(mssqlDb *sql.DB, mysqlDb *sql.DB, mssqlTables []TableDefinition
 						escapedString = strings.Replace(escapedString, "\\", "\\\\", -1)
 						escapedString = strings.Replace(escapedString, "'", "\\'", -1)
 						columnsValue[i] = fmt.Sprintf("'%s'", escapedString)
+					case bool:
+						columnsValue[i] = fmt.Sprint(t)
 					case []uint8:
 						byteArray := v.([]uint8)
 						switch mssqlTable.columns[i].Type {
