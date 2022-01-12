@@ -1,4 +1,4 @@
-package mysql_migration
+package main
 
 import (
 	"database/sql"
